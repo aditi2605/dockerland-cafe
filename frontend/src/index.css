@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+@theme {
+  /* Colours */
+  --color-cafe-cream:    #FDF6EC;
+  --color-cafe-brown:    #6B3F1F;
+  --color-cafe-espresso: #2C1503;
+  --color-cafe-latte:    #C9956C;
+  --color-cafe-steam:    #F5E6D3;
+  --color-cafe-green:    #2D6A4F;
+  --color-cafe-red:      #B5272C;
+  --color-cafe-yellow:   #E9C46A;
+  --color-cafe-blue:     #264653;
+
+  /* Fonts */
+  --font-display: "Playfair Display", Georgia, serif;
+  --font-body:    "Inter", system-ui, sans-serif;
+  --font-mono:    "Fira Code", "Courier New", monospace;
+
+  /* Border radius */
+  --radius-cafe: 12px;
+}
+
+/* Global base styles */
+@layer base {
+  body {
+    @apply bg-cafe-cream text-cafe-espresso font-body;
+    background-image: repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 40px,
+      rgba(107, 63, 31, 0.015) 40px,
+      rgba(107, 63, 31, 0.015) 41px
+    );
+  }
+
+  h1, h2, h3 {
+    @apply font-display;
+  }
+
+  code, pre {
+    @apply font-mono;
+  }
+}
+
+/* Reusable component classes */
+@layer components {
+  .menu-card {
+    @apply bg-white rounded-cafe shadow-md border border-cafe-steam p-6
+           hover:shadow-lg transition-shadow duration-200;
+  }
+
+  .btn-primary {
+    @apply bg-cafe-brown text-cafe-cream font-medium px-5 py-2.5 rounded-cafe
+           hover:bg-cafe-espresso transition-colors duration-200 inline-flex items-center gap-2;
+  }
+
+  .btn-secondary {
+    @apply border-2 border-cafe-brown text-cafe-brown font-medium px-5 py-2.5 rounded-cafe
+           hover:bg-cafe-steam transition-colors duration-200 inline-flex items-center gap-2;
+  }
+
+  .badge {
+    @apply text-xs font-medium px-2.5 py-1 rounded-full;
+  }
+
+  .code-block {
+    @apply bg-cafe-espresso text-cafe-cream font-mono text-sm rounded-cafe p-4
+           overflow-x-auto leading-relaxed;
+  }
+
+  .section-heading {
+    @apply font-display text-2xl md:text-3xl font-bold text-cafe-brown
+           border-b-2 border-cafe-latte pb-2 mb-6;
+  }
+
+  .progress-bar {
+    @apply h-2 bg-cafe-steam rounded-full overflow-hidden;
+  }
+
+  .progress-bar-fill {
+    @apply h-full bg-cafe-latte rounded-full transition-all duration-500;
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: #FDF6EC; }
+::-webkit-scrollbar-thumb { background: #C9956C; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #6B3F1F; }
