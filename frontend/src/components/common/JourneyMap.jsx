@@ -1,5 +1,5 @@
 
-// The winding path world map — shown on the Home page.
+// The winding path world map,shown on the Home page.
 
 // Props:
 //   lessons            → array of lesson objects from the API
@@ -95,7 +95,7 @@ export default function JourneyMap({ lessons = [], completedLessonIds = [], curr
         viewBox="0 0 530 310"
         style={{ width: '100%', height: 'auto', overflow: 'visible' }}
       >
-        {/* ── Dashed road (background) ──────────────────────────────── */}
+        {/* Dashed road (background) */}
         <path
           d={pathD}
           fill="none"
