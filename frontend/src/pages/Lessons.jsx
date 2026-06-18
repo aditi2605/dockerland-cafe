@@ -1,87 +1,423 @@
-// pages/Lessons.jsx — Shows all available lessons (the café "menu")
-import { Link } from 'react-router-dom'
-import { Clock, Star, ArrowRight, ChefHat } from 'lucide-react'
-import { getLessons } from '../utils/api'
-import { useFetch } from '../hooks/useFetch'
-import LoadingSpinner from '../components/common/LoadingSpinner'
-import ErrorMessage from '../components/common/ErrorMessage'
+import { useState }         from 'react'
+import { Link }             from 'react-router-dom'
+import { getLessons }       from '../utils/api'
+import { useFetch }         from '../hooks/useFetch'
+import { useStreak }        from '../hooks/useStreak'
+import { useSound }         from '../hooks/useSound'
+import LoadingSpinner       from '../components/common/LoadingSpinner'
+import ErrorMessage         from '../components/common/ErrorMessage'
 
-// Colour map for difficulty badges
-const DIFFICULTY_STYLES = {
-  beginner:     'bg-green-100 text-green-800',
-  intermediate: 'bg-yellow-100 text-yellow-800',
-  advanced:     'bg-red-100   text-red-800',
-}
+// XP reward per lesson (matches useStreak XP_VALUES.LESSON_COMPLETE)
+const LESSON_XP = 50
+const QUIZ_XP   = 75
 
 export default function Lessons() {
-  // useFetch calls getLessons() on mount and gives us data/loading/error
   const { data: lessons, loading, error, refetch } = useFetch(getLessons)
+  const { completedLessonIds, xp, level }          = useStreak()
+  const { play }                                   = useSound()
+  const [hoveredId, setHoveredId]                  = useState(null)
 
-  if (loading) return <LoadingSpinner message="Reading the menu board..." />
+  if (loading) return <LoadingSpinner message="Loading missions..." />
   if (error)   return <ErrorMessage message={error} onRetry={refetch} />
 
+  // Find the first incomplete lesson, that's the "current" one
+  const firstIncompleteId = lessons?.find(
+    l => !completedLessonIds.includes(l.id)
+  )?.id
+
+  const getStatus = (lesson) => {
+    if (completedLessonIds.includes(lesson.id)) return 'done'
+    if (lesson.id === firstIncompleteId)         return 'current'
+    return 'locked'
+  }
+
+  const totalXP    = lessons?.length * (LESSON_XP + QUIZ_XP) || 0
+  const earnedXP   = completedLessonIds.length * LESSON_XP
+
   return (
-    <div className="max-w-5xl mx-auto px-4 py-12">
-      {/* Header */}
-      <div className="text-center mb-12">
-        <div className="text-5xl mb-3">📚</div>
-        <h1 className="font-display text-4xl font-bold text-cafe-brown mb-3">Today's Menu</h1>
-        <p className="text-gray-600 max-w-xl mx-auto">
-          Each lesson is a dish. Start from the top and work your way through — 
-          every item builds on the last. No rushing the kitchen! 🧑‍🍳
-        </p>
-      </div>
+    <div style={{
+      maxWidth: '780px',
+      margin:   '0 auto',
+      padding:  '40px 20px 80px',
+    }}>
 
-      {/* Lesson grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {lessons?.map((lesson) => (
-          <Link
-            key={lesson.id}
-            to={`/lessons/${lesson.id}`}
-            className="menu-card group flex flex-col hover:border-cafe-latte border border-transparent transition-all"
-          >
-            {/* Card header */}
-            <div className="flex items-start justify-between mb-3">
-              <div className="text-4xl">{lesson.emoji || '📖'}</div>
-              <span className={`badge ${DIFFICULTY_STYLES[lesson.difficulty] || 'bg-gray-100 text-gray-700'}`}>
-                {lesson.difficulty}
-              </span>
-            </div>
+      {/*  Page header */}
+      <div className="animate-slide-down" style={{ marginBottom: '40px' }}>
 
-            {/* Lesson number + title */}
-            <div className="text-xs font-mono text-cafe-latte mb-1">
-              Lesson {lesson.order_index}
-            </div>
-            <h2 className="font-display font-bold text-cafe-brown text-xl mb-2 group-hover:text-cafe-latte transition-colors">
-              {lesson.title}
-            </h2>
-            <p className="text-gray-600 text-sm flex-1 leading-relaxed mb-4">
-              {lesson.summary}
-            </p>
-
-            {/* Footer: meta info */}
-            <div className="flex items-center justify-between text-xs text-gray-400 border-t border-cafe-steam pt-3 mt-auto">
-              <span className="flex items-center gap-1">
-                <Clock size={12} /> {lesson.duration_minutes} min
-              </span>
-              <span className="flex items-center gap-1">
-                <ChefHat size={12} /> {lesson.cafe_concept}
-              </span>
-              <span className="flex items-center gap-1 text-cafe-latte font-medium">
-                Start <ArrowRight size={12} />
-              </span>
-            </div>
-          </Link>
-        ))}
-      </div>
-
-      {/* Empty state */}
-      {lessons?.length === 0 && (
-        <div className="text-center py-20">
-          <div className="text-5xl mb-4">🍽️</div>
-          <p className="text-gray-500">The kitchen is still prepping — check back soon!</p>
+        {/* Breadcrumb */}
+        <div style={{
+          fontFamily:    "'JetBrains Mono', monospace",
+          fontSize:      '11px',
+          color:         'rgba(255,255,255,0.25)',
+          marginBottom:  '16px',
+          letterSpacing: '0.5px',
+        }}>
+          ~/missions
         </div>
-      )}
+
+        {/* Title row */}
+        <div style={{
+          display:        'flex',
+          alignItems:     'flex-end',
+          justifyContent: 'space-between',
+          flexWrap:       'wrap',
+          gap:            '16px',
+          marginBottom:   '20px',
+        }}>
+          <div>
+            <h1 style={{
+              fontFamily:    "'Syne', sans-serif",
+              fontSize:      '36px',
+              fontWeight:    '800',
+              letterSpacing: '-1.5px',
+              color:         '#ffffff',
+              lineHeight:    1,
+              marginBottom:  '6px',
+            }}>
+              Mission Select
+            </h1>
+            <p style={{
+              fontFamily: "'Inter', sans-serif",
+              fontSize:   '14px',
+              color:      'rgba(255,255,255,0.35)',
+            }}>
+              Complete missions in order · earn XP · unlock badges
+            </p>
+          </div>
+
+          {/* Level badge */}
+          <div style={{
+            background:   'rgba(29,99,237,0.1)',
+            border:       '1px solid rgba(29,99,237,0.25)',
+            borderRadius: '12px',
+            padding:      '12px 18px',
+            textAlign:    'center',
+          }}>
+            <div style={{
+              fontSize:     '24px',
+              marginBottom: '4px',
+            }}>
+              {level[2]}
+            </div>
+            <div style={{
+              fontFamily: "'Syne', sans-serif",
+              fontSize:   '13px',
+              fontWeight: '700',
+              color:      '#ffffff',
+            }}>
+              {level[1]}
+            </div>
+            <div style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize:   '10px',
+              color:      '#7EB3FF',
+              marginTop:  '2px',
+            }}>
+              {xp} XP total
+            </div>
+          </div>
+        </div>
+
+        {/* Overall progress bar */}
+        <div style={{
+          background:   '#0D1F3C',
+          border:       '1px solid rgba(29,99,237,0.15)',
+          borderRadius: '10px',
+          padding:      '14px 18px',
+        }}>
+          <div style={{
+            display:        'flex',
+            justifyContent: 'space-between',
+            marginBottom:   '8px',
+          }}>
+            <span style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize:   '11px',
+              color:      'rgba(255,255,255,0.3)',
+            }}>
+              curriculum progress
+            </span>
+            <span style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize:   '11px',
+              color:      '#7EB3FF',
+            }}>
+              {completedLessonIds.length} / {lessons?.length || 0} missions
+            </span>
+          </div>
+          <div className="xp-bar-track" style={{ height: '6px' }}>
+            <div
+              className="xp-bar-fill"
+              style={{
+                width: lessons?.length
+                  ? `${(completedLessonIds.length / lessons.length) * 100}%`
+                  : '0%',
+                height: '6px',
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/*  Mission list */}
+      <div style={{
+        display:       'flex',
+        flexDirection: 'column',
+        gap:           '10px',
+        marginBottom:  '48px',
+      }}>
+        {lessons?.map((lesson, index) => {
+          const status = getStatus(lesson)
+          return (
+            <div key={lesson.id} className="reveal">
+              <MissionRow
+                lesson={lesson}
+                index={index}
+                status={status}
+                hovered={hoveredId === lesson.id}
+                onHover={setHoveredId}
+                onLeave={() => setHoveredId(null)}
+                onPlay={play}
+              />
+            </div>
+          )
+        })}
+      </div>
+
+      {/*  XP breakdown */}
+      <div className="reveal">
+        <div className="section-label">what you earn</div>
+        <div style={{
+          display:             'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+          gap:                 '10px',
+        }}>
+          {[
+            { icon: '📚', label: 'Lesson complete', xp: LESSON_XP,           desc: 'Read through the lesson'       },
+            { icon: '🧠', label: 'Quiz passed',     xp: QUIZ_XP,             desc: 'Score 70% or above'            },
+            { icon: '💯', label: 'Perfect quiz',    xp: QUIZ_XP + 25,        desc: 'Score 100% — bonus XP!'        },
+            { icon: '⚡', label: 'Daily challenge', xp: 30,                  desc: 'Run the daily command'         },
+          ].map(({ icon, label, xp: reward, desc }) => (
+            <div key={label} style={{
+              background:   '#0D1F3C',
+              border:       '1px solid rgba(29,99,237,0.12)',
+              borderRadius: '12px',
+              padding:      '16px',
+            }}>
+              <div style={{ fontSize: '20px', marginBottom: '8px' }}>{icon}</div>
+              <div style={{
+                fontFamily:   "'JetBrains Mono', monospace",
+                fontSize:     '14px',
+                color:        '#E8C547',
+                fontWeight:   '600',
+                marginBottom: '4px',
+              }}>
+                +{reward} XP
+              </div>
+              <div style={{
+                fontFamily:   "'Syne', sans-serif",
+                fontSize:     '12px',
+                fontWeight:   '700',
+                color:        '#ffffff',
+                marginBottom: '4px',
+              }}>
+                {label}
+              </div>
+              <div style={{
+                fontFamily: "'Inter', sans-serif",
+                fontSize:   '11px',
+                color:      'rgba(255,255,255,0.3)',
+              }}>
+                {desc}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
+  )
+}
+
+//  Mission row
+function MissionRow({ lesson, index, status, hovered, onHover, onLeave, onPlay }) {
+  const isDone    = status === 'done'
+  const isCurrent = status === 'current'
+  const isLocked  = status === 'locked'
+
+  const content = (
+    <div
+      onMouseEnter={() => { if (!isLocked) onHover(lesson.id) }}
+      onMouseLeave={onLeave}
+      onClick={() => { if (!isLocked) onPlay('click') }}
+      style={{
+        display:       'flex',
+        alignItems:    'center',
+        gap:           '16px',
+        background:    isDone    ? 'rgba(61,214,140,0.04)'
+                     : isCurrent ? '#0F2240'
+                     :             '#0D1F3C',
+        border:        isDone    ? '1px solid rgba(61,214,140,0.2)'
+                     : isCurrent ? '1px solid rgba(29,99,237,0.5)'
+                     :             '1px solid rgba(255,255,255,0.06)',
+        borderRadius:  '14px',
+        padding:       '18px 20px',
+        cursor:        isLocked ? 'not-allowed' : 'pointer',
+        opacity:       isLocked ? 0.45 : 1,
+        transition:    'all 0.2s',
+        transform:     hovered && !isLocked ? 'translateX(4px)' : 'translateX(0)',
+        position:      'relative',
+        overflow:      'hidden',
+      }}
+    >
+      {/* Current mission left accent bar */}
+      {isCurrent && (
+        <div style={{
+          position:     'absolute',
+          left:         0,
+          top:          0,
+          bottom:       0,
+          width:        '3px',
+          background:   '#1D63ED',
+          borderRadius: '3px 0 0 3px',
+        }} />
+      )}
+
+      {/* Mission number */}
+      <div style={{
+        fontFamily:    "'JetBrains Mono', monospace",
+        fontSize:      '11px',
+        color:         isDone    ? 'rgba(61,214,140,0.5)'
+                     : isCurrent ? '#7EB3FF'
+                     :             'rgba(255,255,255,0.15)',
+        minWidth:      '24px',
+        flexShrink:    0,
+      }}>
+        {String(index + 1).padStart(2, '0')}
+      </div>
+
+      {/* Status circle */}
+      <div style={{
+        width:          '40px',
+        height:         '40px',
+        borderRadius:   '50%',
+        background:     isDone    ? 'rgba(61,214,140,0.12)'
+                      : isCurrent ? 'rgba(29,99,237,0.15)'
+                      :             'rgba(255,255,255,0.04)',
+        border:         isDone    ? '1.5px solid rgba(61,214,140,0.35)'
+                      : isCurrent ? '1.5px solid #1D63ED'
+                      :             '1.5px solid rgba(255,255,255,0.08)',
+        display:        'flex',
+        alignItems:     'center',
+        justifyContent: 'center',
+        fontSize:       '18px',
+        flexShrink:     0,
+        animation:      isCurrent ? 'pulse-dot 2s ease-in-out infinite' : 'none',
+        position:       'relative',
+      }}>
+        {isDone ? '✓' : lesson.emoji || '📖'}
+
+        {/* Ripple on current */}
+        {isCurrent && (
+          <div style={{
+            position:     'absolute',
+            inset:        '-6px',
+            borderRadius: '50%',
+            border:       '1px solid rgba(29,99,237,0.3)',
+            animation:    'ripple 1.8s ease-out infinite',
+          }} />
+        )}
+      </div>
+
+      {/* Lesson info */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontFamily:   "'Syne', sans-serif",
+          fontSize:     '15px',
+          fontWeight:   '700',
+          color:        isDone    ? 'rgba(255,255,255,0.6)'
+                      : isCurrent ? '#ffffff'
+                      :             'rgba(255,255,255,0.4)',
+          marginBottom: '3px',
+          whiteSpace:   'nowrap',
+          overflow:     'hidden',
+          textOverflow: 'ellipsis',
+        }}>
+          {lesson.title}
+        </div>
+        <div style={{
+          display:    'flex',
+          alignItems: 'center',
+          gap:        '10px',
+          flexWrap:   'wrap',
+        }}>
+          <span style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize:   '11px',
+            color:      isDone    ? 'rgba(61,214,140,0.5)'
+                      : isCurrent ? 'rgba(126,179,255,0.7)'
+                      :             'rgba(255,255,255,0.2)',
+          }}>
+            {lesson.cafe_concept}
+          </span>
+          <span style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize:   '11px',
+            color:      'rgba(255,255,255,0.15)',
+          }}>
+            · {lesson.duration_minutes} min
+          </span>
+        </div>
+      </div>
+
+      {/* Right side — XP + arrow */}
+      <div style={{
+        display:    'flex',
+        alignItems: 'center',
+        gap:        '12px',
+        flexShrink: 0,
+      }}>
+        {isDone ? (
+          <div className="pill pill-green" style={{ fontSize: '10px' }}>
+            ✓ complete
+          </div>
+        ) : (
+          <div className="pill pill-gold" style={{ fontSize: '10px' }}>
+            +{LESSON_XP} XP
+          </div>
+        )}
+
+        {!isLocked && (
+          <div style={{
+            color:      isCurrent ? '#7EB3FF' : 'rgba(255,255,255,0.2)',
+            fontSize:   '16px',
+            transition: 'transform 0.2s',
+            transform:  hovered ? 'translateX(4px)' : 'translateX(0)',
+          }}>
+            →
+          </div>
+        )}
+
+        {isLocked && (
+          <div style={{
+            color:    'rgba(255,255,255,0.15)',
+            fontSize: '14px',
+          }}>
+            🔒
+          </div>
+        )}
+      </div>
+    </div>
+  )
+
+  // Wrap in Link only if not locked
+  if (isLocked) return content
+
+  return (
+    <Link
+      to={`/lessons/${lesson.id}`}
+      style={{ textDecoration: 'none', display: 'block' }}
+    >
+      {content}
+    </Link>
   )
 }
