@@ -81,6 +81,9 @@
   ::-webkit-scrollbar-thumb:hover { background: #7EB3FF; }
 }
 
+.hidden-mobile { display: flex; }
+.show-mobile   { display: none; }
+
 /* COMPONENT CLASSES*/
 @layer components {
 
